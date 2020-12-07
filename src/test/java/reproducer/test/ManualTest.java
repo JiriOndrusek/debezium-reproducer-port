@@ -1,6 +1,10 @@
 package reproducer.test;
 
 
+import com.github.dockerjava.api.command.CreateContainerCmd;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -10,18 +14,24 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.test.junit5.CamelTestSupport;
 import org.bson.Document;
+import org.junit.ClassRule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.function.Consumer;
 
+@Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ManualTest extends CamelTestSupport {
 
@@ -29,11 +39,24 @@ class ManualTest extends CamelTestSupport {
     private static final String DB_USERNAME = "debezium";
     private static final String DB_PASSWORD = "dbz";
     private static final String DB_HOST = "127.0.0.1";
-    private static int DB_PORT = 30001;
+    private static int DB_PORT = 27017;
 
     private static MongoClient mongoClient;
 
     private static Path storeFile;
+
+    @Container
+    public static GenericContainer mongo
+            = new GenericContainer("mongo").withCreateContainerCmdModifier((Consumer<CreateContainerCmd>) cmd -> {
+        cmd.withName("mongo1");
+//            cmd.withHostConfig(new HostConfig().withPortBindings(new PortBinding(Ports.Binding.bindPort(27017), new ExposedPort(30001))));
+        cmd.withPortBindings(new PortBinding(Ports.Binding.bindPort(27017), new ExposedPort(27017)));
+    })
+            //                .withNetwork(network)
+            //                .withNetworkAliases("mongo1")
+            .withCommand("--replSet", "my-mongo-set");
+
+
 
     @BeforeAll
     public static void setUpAll() throws SQLException, IOException {
@@ -42,6 +65,26 @@ class ManualTest extends CamelTestSupport {
         mongoClient = MongoClients.create(mongoUrl);
 
         storeFile = Files.createTempFile(ManualTest.class.getSimpleName() + "-store-", "");
+
+        try {
+            //todo simple workaround to wait for container to start
+            Thread.sleep(5000);
+            System.out.println(mongo.getContainerInfo().getNetworkSettings().getIpAddress());
+            org.testcontainers.containers.Container.ExecResult er = mongo.execInContainer(new String[]{"mongo", "--eval",
+                    "rs.initiate( {\"_id\" : \"my-mongo-set\",\t\"members\" : [{\"_id\" : 0, \"host\" : \""+mongo.getContainerInfo().getNetworkSettings().getIpAddress()+":27017\", \"priority\": 1}] })"});
+            System.out.println(">>>>> " + er.getExitCode());
+            er = mongo.execInContainer(new String[]{"mongo", "--eval",
+                    "rs.initiate()"});
+            System.out.println(">>>>> " + er.getExitCode());
+            er = mongo.execInContainer(new String[]{"mongo", "--eval",
+                    "db.getSiblingDB('admin').createUser({ user: \"debezium\", pwd:\"dbz\", roles: [  {role: \"userAdminAnyDatabase\", db: \"admin\" }, { role: \"dbAdminAnyDatabase\", db: \"admin\" },  { role: \"readWriteAnyDatabase\", db:\"admin\" },  { role: \"clusterAdmin\",  db: \"admin\" }]});"});
+            System.out.println(">>>>> " + er.getExitCode());
+            er = mongo.execInContainer(new String[]{"mongo", "--eval",
+                    "rs.status();sh.addShard(\"my-mongo-set/localhost:27017\")"});
+            System.out.println(">>>>> " + er.getExitCode());
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @AfterAll
