@@ -31,7 +31,7 @@ Test creates camel route using debezium embedded engine, which receives events f
 
 ## How to fail (using version 1.4.0-SNAPSHOT and non-default port)
 
-* Change version of `debeziun-connector-mongodb` to `1.4.0-SNAPSHOT` in pom.xml (line 14)
+* Change version of `debeziun-connector-mongodb` to `1.4.0-SNAPSHOT` in pom.xml ([line 14](https://github.com/JiriOndrusek/debezium-reproducer-port/blob/main/pom.xml#L14))
 
 * Follow all steps from successful run
 
@@ -39,9 +39,9 @@ Test creates camel route using debezium embedded engine, which receives events f
 
 ## How to run successfully (using version 1.4.0-SNAPSHOT and default port)
 
-* Change version of `debeziun-connector-mongodb` to `1.4.0-SNAPSHOT` in pom.xml (line 14)
+* Change version of `debeziun-connector-mongodb` to `1.4.0-SNAPSHOT` in pom.xml ([line 14](https://github.com/JiriOndrusek/debezium-reproducer-port/blob/main/pom.xml#L14))
 
-* Change value of port to default one - in ManualTest.java (uncomment line 32 and comment line 33)
+* Change value of port to default one - 27017 (in ManualTest.java [line 32](https://github.com/JiriOndrusek/debezium-reproducer-port/blob/main/src/test/java/reproducer/test/ManualTest.java#L32))
 
 * Start mongo db with default port by command:
 

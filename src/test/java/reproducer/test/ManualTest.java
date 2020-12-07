@@ -29,8 +29,7 @@ class ManualTest extends CamelTestSupport {
     private static final String DB_USERNAME = "debezium";
     private static final String DB_PASSWORD = "dbz";
     private static final String DB_HOST = "127.0.0.1";
-    private static int DB_PORT = 27017;
-//    private static int DB_PORT = 30001;
+    private static int DB_PORT = 30001;
 
     private static MongoClient mongoClient;
 
